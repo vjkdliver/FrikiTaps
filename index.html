@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FrikiBot TapGame</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --gold: #ffd700;
+    --text: #e8e8f0;
+    --muted: #555570;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header {
+    text-align: center;
+  }
+
+  .title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid #1e1e2e;
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    line-height: 1.1;
+  }
+
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.red { color: var(--accent2); }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    background: var(--surface);
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid #1e1e2e;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.15s ease;
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 99px;
+    filter: blur(4px);
+  }
+
+  /* TAP BUTTON */
+  .tap-area {
+    position: relative;
+    width: 220px;
+    height: 220px;
+  }
+
+  .tap-btn {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: radial-gradient(circle at 35% 35%, #1a2a1f, #0a0f0a);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.08s ease, border-color 0.1s;
+    box-shadow:
+      0 0 30px rgba(0,255,136,0.15),
+      inset 0 0 40px rgba(0,255,136,0.05);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .tap-btn:active {
+    transform: scale(0.92);
+    border-color: var(--gold);
+    box-shadow:
+      0 0 60px rgba(0,255,136,0.4),
+      inset 0 0 40px rgba(0,255,136,0.1);
+  }
+
+  .tap-btn.disabled {
+    border-color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .tap-inner {
+    position: absolute;
+    inset: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,255,136,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .tap-icon {
+    font-size: 52px;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(0,255,136,0.5));
+    transition: transform 0.08s;
+  }
+
+  .tap-btn:active .tap-icon {
+    transform: scale(0.85);
+  }
+
+  .tap-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: var(--accent);
+  }
+
+  /* Ripple */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(0,255,136,0.3);
+    transform: scale(0);
+    animation: ripple-anim 0.5s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes ripple-anim {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* Floating +1 */
+  .float-text {
+    position: fixed;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--accent);
+    pointer-events: none;
+    animation: float-up 0.8s ease-out forwards;
+    z-index: 999;
+    text-shadow: 0 0 10px var(--accent);
+  }
+
+  @keyframes float-up {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+  }
+
+  /* Code display */
+  .code-section {
+    display: none;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0,255,136,0.1);
+  }
+
+  .code-section.show { display: block; animation: pop-in 0.4s cubic-bezier(.175,.885,.32,1.275); }
+
+  @keyframes pop-in {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .code-title {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .code-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 6px;
+    color: var(--gold);
+    background: #0a0a0f;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+    width: 100%;
+  }
+
+  .copy-btn:active { transform: scale(0.96); }
+  .copy-btn.copied { background: var(--gold); }
+
+  .code-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  .code-hint span { color: var(--accent); }
+
+  /* Cooldown screen */
+  .cooldown-msg {
+    display: none;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .cooldown-msg.show { display: block; }
+
+  .cooldown-msg .big { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--accent2); }
+  .cooldown-msg .sub { font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+
+  /* Geos preview */
+  .geos-preview {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .geos-preview span { color: var(--gold); font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="title">TAPGAME</div>
+    <div class="subtitle">Frikibot · Minijuego de taps</div>
+  </div>
+
+  <div id="mainGame">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:20px;width:100%">
+
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">Taps</div>
+          <div class="stat-value" id="tapCount">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Meta</div>
+          <div class="stat-value gold">100</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Geos</div>
+          <div class="stat-value" id="geosPreview" style="font-size:20px">0</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-info">
+          <span>PROGRESO</span>
+          <span id="pctText">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="tap-area">
+        <div class="tap-btn" id="tapBtn" ontouchstart="handleTap(event)" onclick="handleTap(event)">
+          <div class="tap-inner">
+            <div class="tap-icon">⛏️</div>
+            <div class="tap-label">TAP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="geos-preview">Velocidad x multiplicador = <span id="multiShow">?</span> geos</div>
+
+    </div>
+  </div>
+
+  <div id="cooldownMsg" class="cooldown-msg">
+    <div class="big">⏳</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--accent2)">YA JUGASTE HOY</div>
+    <div class="sub">Vuelve mañana para ganar más geos</div>
+    <div class="sub" id="cooldownTimer" style="margin-top:12px;color:var(--text)"></div>
+  </div>
+
+  <div class="code-section" id="codeSection">
+    <div class="code-title">🎉 ¡Completado! Tu código de canje</div>
+    <div class="code-value" id="codeDisplay">...</div>
+    <button class="copy-btn" id="copyBtn" onclick="copiarCodigo()">📋 COPIAR CÓDIGO</button>
+    <div class="code-hint">
+      Envía en el bot:<br>
+      <span>.codeclaim [TU CÓDIGO]</span><br><br>
+      ⚠️ El código expira en 10 minutos
+    </div>
+  </div>
+
+</div>
+
+<script>
+const TOTAL_TAPS = 100;
+const SECRET = "FRIKIBOT_2025_SECRET_XK9";
+const COOLDOWN_KEY = "tapgame_last_played";
+const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+let taps = 0;
+let startTime = null;
+let finished = false;
+let lastTapTime = 0;
+const TAP_THROTTLE = 50; // ms mínimo entre taps
+
+function checkCooldown() {
+  const last = localStorage.getItem(COOLDOWN_KEY);
+  if (!last) return false;
+  const diff = Date.now() - parseInt(last);
+  return diff < COOLDOWN_MS;
+}
+
+function getRemainingTime() {
+  const last = parseInt(localStorage.getItem(COOLDOWN_KEY) || '0');
+  const remaining = COOLDOWN_MS - (Date.now() - last);
+  if (remaining <= 0) return null;
+  const h = Math.floor(remaining / 3600000);
+  const m = Math.floor((remaining % 3600000) / 60000);
+  return `${h}h ${m}m restantes`;
+}
+
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36).toUpperCase();
+}
+
+function generarCodigo(geos, timestamp) {
+  const base = `${geos}|${timestamp}|${SECRET}`;
+  const hash = simpleHash(base);
+  const ts36 = timestamp.toString(36).toUpperCase();
+  const geos36 = geos.toString(36).toUpperCase();
+  return `FK-${geos36}-${ts36}-${hash}`;
+}
+
+function calcularGeos(tiempoMs, tapsCompletados) {
+  const segundos = tiempoMs / 1000;
+  const tps = tapsCompletados / segundos; // taps por segundo
+  // Base: 200 geos + bonus por velocidad
+  const base = 200;
+  const bonus = Math.floor(tps * 80); // más rápido = más bonus
+  const total = Math.min(base + bonus, 2000); // máx 2000
+  return total;
+}
+
+function handleTap(e) {
+  e.preventDefault();
+  if (finished) return;
+  if (taps >= TOTAL_TAPS) return;
+
+  const now = Date.now();
+  if (now - lastTapTime < TAP_THROTTLE) return;
+  lastTapTime = now;
+
+  if (!startTime) startTime = now;
+
+  taps++;
+
+  // Ripple
+  const btn = document.getElementById('tapBtn');
+  const rect = btn.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const ripple = document.createElement('div');
+  ripple.className = 'ripple';
+  ripple.style.left = (x - 30) + 'px';
+  ripple.style.top  = (y - 30) + 'px';
+  ripple.style.width = ripple.style.height = '60px';
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
+
+  // Float text
+  const ft = document.createElement('div');
+  ft.className = 'float-text';
+  ft.textContent = '+1';
+  ft.style.left = (e.touches ? e.touches[0].clientX : e.clientX) + 'px';
+  ft.style.top  = (e.touches ? e.touches[0].clientY : e.clientY) + 'px';
+  document.body.appendChild(ft);
+  setTimeout(() => ft.remove(), 800);
+
+  // Update UI
+  const pct = (taps / TOTAL_TAPS) * 100;
+  document.getElementById('tapCount').textContent = taps;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('pctText').textContent = Math.round(pct) + '%';
+
+  // Geos preview
+  const elapsed = now - startTime;
+  const geosEstimados = calcularGeos(elapsed, taps);
+  document.getElementById('geosPreview').textContent = geosEstimados;
+
+  const tps = (taps / (elapsed / 1000)).toFixed(1);
+  document.getElementById('multiShow').textContent = `${tps} t/s → ${geosEstimados}`;
+
+  if (taps >= TOTAL_TAPS) {
+    completar(now);
+  }
+}
+
+function completar(endTime) {
+  finished = true;
+  const elapsed = endTime - startTime;
+  const geos = calcularGeos(elapsed, TOTAL_TAPS);
+  const timestamp = Math.floor(endTime / 1000);
+  const codigo = generarCodigo(geos, timestamp);
+
+  localStorage.setItem(COOLDOWN_KEY, endTime.toString());
+
+  document.getElementById('tapBtn').classList.add('disabled');
+  document.getElementById('codeDisplay').textContent = codigo;
+  document.getElementById('codeSection').classList.add('show');
+}
+
+function copiarCodigo() {
+  const code = document.getElementById('codeDisplay').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ COPIADO';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 COPIAR CÓDIGO';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// Init
+window.addEventListener('load', () => {
+  if (checkCooldown()) {
+    document.getElementById('mainGame').style.display = 'none';
+    document.getElementById('cooldownMsg').classList.add('show');
+    const rem = getRemainingTime();
+    if (rem) document.getElementById('cooldownTimer').textContent = rem;
+
+    // Actualizar cada minuto
+    setInterval(() => {
+      if (!checkCooldown()) location.reload();
+      const r = getRemainingTime();
+      if (r) document.getElementById('cooldownTimer').textContent = r;
+    }, 60000);
+  }
+});
+</script>
+</body>
+</html>
